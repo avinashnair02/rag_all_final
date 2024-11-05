@@ -27,47 +27,6 @@ from datetime import datetime
 from concurrent.futures import ProcessPoolExecutor
 ###### injest footer
 
-
-def inject_footer_css():
-    st.markdown(
-        """
-        <style>
-        /* Footer styling */
-        .footer {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            background-color: #f0f2f6;
-            padding: 10px 0;
-            text-align: center;
-            font-size: small;
-            color: #6c757d;
-            box-shadow: 0 -1px 5px rgba(0, 0, 0, 0.1);
-            z-index: 100;
-        }
-        /* Body padding to prevent content overlap */
-        .block-container {
-            padding-bottom: 60px;
-        }
-        </style>
-        """,
-        unsafe_allow_html=True
-    )
-
-inject_footer_css()
-
-
-def display_footer():
-    st.markdown(
-        """
-        <div class="footer">
-            Note: The bot can make mistakes. Please verify the answers.
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-
 def get_db_connection():
     conn = psycopg2.connect(
         host="172.20.10.64",
@@ -111,10 +70,6 @@ def get_latest_feedback(username):
     feedback = result[0] if result else None
 
     return feedback
-
-
-
-
 def update_chat_data(username, user_message, bot_response, feedback):
     print(f"Updating chat data for {username}: user_message={user_message}, bot_response={bot_response}, feedback={feedback}")
     
@@ -211,6 +166,51 @@ prompt_templates = {
     Question: {question}
     """
 }
+
+
+
+###BPS related prompt
+
+
+
+# bps_prompt_templates = {
+#     "detailed": """
+#     You are an expert assistant with in-depth knowledge of Bodhee, a scheduling and rescheduling application designed for complex pharmaceutical operations covering Manufacturing, Quality and Maintenance scheduling. 
+#     Your role is to provide comprehensive, expert-level guidance to users seeking to understand scheduling concepts and Bodhee’s specific features within a pharmaceutical context.
+    
+#     Offer detailed explanations and examples that illustrate how Bodhee’s tools support key scheduling needs, such as batch tracking, production timelines, and compliance management. 
+#     Reference relevant sections from Bodhee's documentation to guide users on how to perform specific tasks, navigate features, or troubleshoot scheduling challenges within the application.
+
+#     Whenever possible, illustrate how Bodhee can optimize workflows for drug manufacturing timelines, manage overlapping production stages. Include examples such as using Gantt charts within Bodhee for multi-stage production, scheduling time-sensitive compounds. 
+
+#     If diagrams, charts, or feature-specific visuals from Bodhee are available, suggest these to enhance the user's understanding. For example, refer to Bodhee’s timeline view for visualizing production cycles or its compliance tracking tools for regulatory adherence.
+
+#     **Context:**
+#     {context}
+    
+#     **Question:**
+#     {question}
+    
+#     **Guidance:**
+#     Emphasize actionable steps using Bodhee’s features to address the user’s needs. For instance, detail how Bodhee can assist in rescheduling due to delays in production, optimizing inventory for batch production. Provide best practices and point out any limitations or considerations that users should be aware of when using Bodhee in pharmaceutical applications.
+#     """,
+    
+#     "concise": """
+#     You are a Bodhee expert providing direct, focused answers to questions on pharmaceutical scheduling within the Bodhee application. 
+#     Your responses should quickly guide users by referencing Bodhee documentation and explaining relevant features that address their specific needs.
+
+#     **Context:**
+#     {context}
+    
+#     **Question:**
+#     {question}
+    
+#     **Note:** Reference relevant sections in Bodhee’s documentation when they clarify the response. Use brief, specific examples from Bodhee’s pharma-focused features, such as batch production scheduling, timeline views, or compliance tracking tools, but keep answers concise and directly aligned with the question.
+#     """
+# }
+
+
+
 # Keywords that trigger the 'detailed' prompt template
 detailed_keywords = ["explain", "detail", "describe", "in-depth", "thorough", "elaborate"]
 # Function to choose the appropriate prompt template
@@ -228,81 +228,18 @@ def generate_prompt_with_memory(selected_prompt_template):
     return selected_prompt_template.format(conversation=conversation_history)
 vectorstore = None
 file_embeddings = OllamaEmbeddings(model='mxbai-embed-large')
-#uploaded_file = st.file_uploader("Upload a file (PDF, Excel,CSV,TXT)", type=["pdf", "xlsx", "csv","txt"])
-# if uploaded_file is not None:
-#     file_name = os.path.splitext(uploaded_file.name)[0]
-#     VECTORSTORE_PATH = os.path.join("/home/localstudio/rag-demo/rag_chatbot/upload_vector", f"{file_name}_vectorstore.pkl")
-#     if os.path.exists(VECTORSTORE_PATH):
-#         st.info("Loading existing vectorstore from disk...")
-#         with open(VECTORSTORE_PATH, 'rb') as f:
-#             vectorstore = pickle.load(f)
-#     else:
-#         st.info("No existing vectorstore found. Creating a new one...")
-#         if uploaded_file.name.endswith('.pdf'):
-#             with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as temp_file:
-#                 temp_file.write(uploaded_file.read())
-#                 temp_pdf_path = temp_file.name
-#             loader = PyPDFLoader(temp_pdf_path)
-#             pages = loader.load()
-#             splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=300)
-#             chunks = splitter.split_documents(pages)
-#         elif uploaded_file.name.endswith('.xlsx'):
-#         # Handle Excel files
-#             df = pd.read_excel(uploaded_file)
-#             # Combine rows into larger chunks for vectorization
-#             documents = [Document(page_content='\n'.join(df.iloc[i:i+10].to_string() for i in range(0, len(df), 10)))]
-#             # Adjust chunk size and overlap to reduce unnecessary chunking
-#             splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
-#             chunks = splitter.split_documents(documents)
-#         elif uploaded_file.name.endswith('.csv'):
-#             # Handle CSV files
-#             df = pd.read_csv(uploaded_file)
-#             documents = [Document(page_content=row.to_string()) for _, row in df.iterrows()]
-#             # Optionally split documents
-#             splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=100)
-#             chunks = splitter.split_documents(documents)
-#         elif uploaded_file.name.endswith('.txt'):
-#             content = uploaded_file.read().decode('utf-8')
-#             document = Document(page_content=content)
-#             splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=100)
-#             chunks = splitter.split_documents([document])
-        
-#         # Function to process a batch of chunks
-#         def process_chunks(batch):
-#             return file_embeddings.embed_documents([chunk.page_content for chunk in batch])
-#         start_time_file = time.time()
-#         # Create embeddings and vectorstore using parallel processing
-#         with st.spinner("Creating embeddings and vectorstore..."):
-#             # Using batch size to process multiple chunks at once
-#             batch_size = 10  
-#             embeddings_list = []
-#             # Add a progress bar using tqdm
-#             with tqdm(total=len(chunks), desc="Vectorizing chunks", unit="chunk") as pbar:
-#                 with ThreadPoolExecutor() as executor:
-#                     for i in range(0, len(chunks), batch_size):
-#                         batch = chunks[i:i + batch_size]
-#                         # Submit batch processing
-#                         embeddings = executor.submit(process_chunks, batch)
-#                         embeddings_list.extend(embeddings.result())  # Collect results
-#                         pbar.update(len(batch))  # Update progress bar for each batch processed
-#             # Create vectorstore with the processed embeddings
-#             vectorstore = FAISS.from_documents(chunks, file_embeddings)
-#             # Save vectorstore to disk
-#             with open(VECTORSTORE_PATH, 'wb') as f:
-#                 pickle.dump(vectorstore, f)
-#         end_time_file = time.time()
-#         time_taken = end_time_file - start_time_file
-#         st.success(f"Embeddings created successfully in {time_taken:.2f} seconds!")
-# once we upload can  we store this and then query  thus makiing this faster so that it will realoda eveytimeS
 pdf_options = {
     "BPS": '/home/localstudio/rag-demo/release/BPS.pdf',
     "Portescap": '/home/localstudio/rag-demo/release/Porterscap.pdf',
-    "IT Infrastructure" : '/home/localstudio/rag-demo/release/IT Infrastructure.pdf'
+    "IT Infrastructure" : '/home/localstudio/rag-demo/release/IT Infrastructure.pdf',
+    "SCM" : '/home/localstudio/rag-demo/release/SCM.pdf'
+
 }
 vectorstore_paths = {
     "BPS": '/home/localstudio/rag-demo/release/embeddings/all_doc_vectorstore.pkl',
     "Portescap": '/home/localstudio/rag-demo/release/embeddings/all_doc_porter_vectorstore.pkl',
-    "IT Infrastructure" : '/home/localstudio/rag-demo/release/embeddings/it_infra.pkl'
+    "IT Infrastructure" : '/home/localstudio/rag-demo/release/embeddings/it_infra.pkl',
+    "SCM" : '/home/localstudio/rag-demo/release/embeddings/scm.pkl'
 }
 
 # PDF file selection widget
@@ -333,7 +270,7 @@ else:
     logging.info("PDF loaded.")
     
     # Split PDF into chunks
-    splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=100)  # Reduced chunk size
+    splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=300)  # Reduced chunk size
     chunks = splitter.split_documents(pages)
     
     #st.info("Creating embeddings for the document...")
@@ -377,9 +314,9 @@ else:
     logging.info("Vectorstore saved to disk.")
 # Image retrieval file paths
 csv_file_path = '/home/localstudio/rag-demo/release/img_embeddings/all_doc_img_descriptions.csv'
-faiss_index_path = '/home/localstudio/rag-demo/release/img_embeddings/all_doc_image_faiss_index.pkl'
-faiss_data_path = '/home/localstudio/rag-demo/release/img_embeddings/all_doc_faiss_data.pkl'
-mapping_file_path = '/home/localstudio/rag-demo/release/img_embeddings/all_doc_image_summary.csv'
+faiss_index_path = '/home/localstudio/rag-demo/release/img_embeddings/bps_image_faiss_index.pkl'
+faiss_data_path = '/home/localstudio/rag-demo/release/img_embeddings/bps_faiss_data.pkl'
+mapping_file_path = '/home/localstudio/rag-demo/release/img_embeddings/bps_image_summary.csv'
 # Load CSV file and verify contents
 try:
     df = pd.read_csv(csv_file_path)
@@ -446,13 +383,8 @@ if VECTORSTORE_PATH is not None:
         logging.info("Vectorstore saved to disk.")
     logging.info("Initializing retriever and model...")
     retriever = vectorstore.as_retriever()
-    
-    #model = ChatOllama(model="llama3.1", temperature=0, streaming=True)
     model = ChatOllama(model=model_name, temperature=0, streaming=True)
     parser = StrOutputParser()
-# Initialize session state for chat history
-# Initialize session state for chat history
-
 MAX_MESSAGES = 10
 MAX_CONTEXT_MEMORY = 5
 
@@ -460,11 +392,6 @@ if "messages" not in st.session_state:
     st.session_state["messages"] = [{"role": "Bot", "content": "Hello! How can I assist today?","image":None}]
     st.session_state["first_prompt"] = None  # To store the first prompt
     st.session_state["chat_name"] = "Chat-Default"  # Initialize chat_name
-
-
-
-
-
 
 # Render chat history
 for idx, message in enumerate(st.session_state["messages"]):
@@ -503,8 +430,6 @@ for idx, message in enumerate(st.session_state["messages"]):
 if len(st.session_state["messages"]) > MAX_MESSAGES:
     #st.session_state["messages"] = st.session_state["messages"][-MAX_MESSAGES:]
     st.session_state.messages.pop(0)
-# Handle user question input
-
 
 if question := st.chat_input("Type your question here..."):
     
@@ -518,7 +443,7 @@ if question := st.chat_input("Type your question here..."):
     scores_dict = {}
     result_ids = []
     for doc, score in results:
-        if score < 400.00:
+        if score < 600.00:
             scores_dict[doc.metadata['faiss_id']] = score
     sorted_dict_asc = dict(sorted(scores_dict.items(), key=lambda item: item[1]))
    
@@ -526,12 +451,6 @@ if question := st.chat_input("Type your question here..."):
         result_ids.append(key)
    
     result_paths = mapping_df[mapping_df['faiss_id'].isin(result_ids)]['image_path'].to_list()
-
-    # Retrieve context from the vector store
-    # retrieved_docs = vectorstore.similarity_search(question, k=3)
-    # # Combine the context from the retrieved documents
-    # document_context = '\n'.join(map(lambda doc: doc.page_content, retrieved_docs))
-
     retrieved_docs = vectorstore.similarity_search(question, k=3)
     document_context = '\n'.join(map(lambda doc: doc.page_content, retrieved_docs))
 
@@ -542,16 +461,7 @@ if question := st.chat_input("Type your question here..."):
 
     # Display the chat name
     st.write(f"**Chat Name:** {st.session_state['chat_name']}")
-   # conversation_history = "\n".join(f"{msg['role']}: {msg['content']}" for msg in st.session_state["messages"][-MAX_CONTEXT_MEMORY:])
-    
-    # mem_check = get_latest_feedback(st.session_state['username'])
-    # #st.write(mem_check)
-    # if mem_check is False:
-    #     conversation_history = ''
-    # Retain memory regardless of feedback
     conversation_history = "\n".join(f"{msg['role']}: {msg['content']}" for msg in st.session_state["messages"][-MAX_CONTEXT_MEMORY:])
-
-    
     combined_context = f"{document_context}\n\n{conversation_history}"
     #prompt_text = select_prompt_template.format(context=combined_context, question=question)
     selected_prompt_template = select_prompt_template(question)
@@ -562,20 +472,7 @@ if question := st.chat_input("Type your question here..."):
     print("Retrieved Document Context:", document_context)
     retrieve_end = time.time()
     logging.info(f"Context retrieved in {retrieve_end - retrieve_start:.2f} seconds")
-
-    # Prepare the prompt template
-
-
-    # Combine conversation history with the document context
-    # conversation_history = "\n".join(f"{msg['role']}: {msg['content']}" for msg in st.session_state["messages"])
-    # combined_context = f"{document_context}\n\n{conversation_history}"
-
     print("Combined Context:", combined_context)
-
-    # Generate prompt with memory, ensuring to match placeholders in the prompt template
-    #prompt_text = selected_prompt_template.format(context=combined_context, question=question)  # Use 'combined_context' here
-    print("Prompt Text:", prompt_text)
-
     # Prepare the chain for the response generation
     chain = (
         {
@@ -613,11 +510,7 @@ if question := st.chat_input("Type your question here..."):
     if result_paths:    
         img = Image.open(result_paths[0])
         st.image(img)    
-       
-   
     st.session_state.messages.append({"role": "BOT", "content": response, 'image': img})
- 
-
     # Always save the chat history to the database after generating the response
     username = st.session_state['username']
 
@@ -642,11 +535,6 @@ if question := st.chat_input("Type your question here..."):
                 print("Feedback set to False")
                 # Update chat data with feedback
                 update_chat_data(username, question, response, feedback_value)  # Save feedback as 'False'
-
-    #insert_chat_data(username, question, response, feedback_value)
-    
-    # Process image results based on the user question
-  # Display the top result
     model_end = time.time()
     logging.info(f"Model generated answer in {model_end - model_start:.2f} seconds")
 # Download chat history button
@@ -660,4 +548,3 @@ if st.button("Download Chat History"):
             file_name=f"{st.session_state['username']}_chat_history_with_feedback.txt"  # Updated file name
         )
 
-display_footer()
